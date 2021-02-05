@@ -6,7 +6,7 @@ Flux is InfluxData’s functional data scripting language designed for querying,
 
 import codecs
 import csv
-from typing import List, Generator, Any
+from typing import List, Generator, Any, Optional
 
 from influxdb_client import Dialect
 from influxdb_client import Query, QueryService
@@ -62,19 +62,25 @@ class QueryApi(object):
 
         return result
 
-    def query(self, query: str, org=None) -> List['FluxTable']:
+    def query(self, query: str, org=None, async_req: bool = True, request_timeout: Optional[int] = 10) -> List['FluxTable']:
         """
         Execute synchronous Flux query and return result as a List['FluxTable'].
 
         :param query: the Flux query
         :param org: organization name (optional if already specified in InfluxDBClient)
+        :param async_req: shall the query will be executed asynchronous. Default is True.
+        :param request_timeout: request timeout in seconds. Default is 10.
         :return:
         """
         if org is None:
             org = self._influxdb_client.org
 
         response = self._query_api.post_query(org=org, query=self._create_query(query, self.default_dialect),
-                                              async_req=False, _preload_content=False, _return_http_data_only=False)
+                                              async_req=async_req, _preload_content=False, _return_http_data_only=False,
+                                              _request_timeout=request_timeout)
+
+        if async_req:
+            return response
 
         _parser = FluxCsvParser(response=response, serialization_mode=FluxSerializationMode.tables)
 
